@@ -1,0 +1,486 @@
+<!DOCTYPE html> 
+<html class="light" lang="en"> 
+<head> 
+    <meta charset="utf-8"/> 
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/> 
+    <title>Transcript Quality Check</title> 
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script> 
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/> 
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script> 
+    <script> 
+        tailwind.config = { 
+            darkMode: "class", 
+            theme: { 
+                extend: { 
+                    colors: { 
+                        "primary": "#4f46e5", 
+                        "background-light": "#f8fafc", 
+                        "background-dark": "#0f172a", 
+                        "border-light": "#e2e8f0", 
+                    }, 
+                    fontFamily: { "display": ["Lexend", "sans-serif"] }, 
+                    borderRadius: {"DEFAULT": "0.375rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"}, 
+                }, 
+            }, 
+        } 
+    </script> 
+<style>
+    body { 
+        font-family: 'Lexend', sans-serif; 
+    }
+
+    /* Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar { 
+        width: 8px; 
+    }
+    .custom-scrollbar::-webkit-scrollbar-track { 
+        background: transparent; 
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb { 
+        background-color: #cbd5e1; /* slate-300 */
+        border-radius: 9999px;
+    }
+
+    /* Lecture block */
+    .lecture-block {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 2rem;
+        padding: 2rem;
+        border: 1px solid #e5e7eb; /* border-light */
+        background-color: white;
+        align-items: flex-start;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        margin-left: 2rem;
+        margin-right: 2rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        transition: box-shadow 0.3s;
+    }
+
+    .lecture-block:hover {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Content area */
+    .content-area {
+        min-height: 120px;
+        outline: none;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        background-color: rgba(241,245,249,0.5); /* slate-50/50 */
+        border: 1px solid rgba(226,232,240,1); /* slate-100 */
+        transition: all 0.3s;
+    }
+
+    .content-area:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(59,130,246,0.2); /* primary/20 */
+    }
+
+    /* Highlights */
+    .highlight-grammar  {
+        border-bottom: 2px solid #ef4444; /* red-500 */
+        background-color: #fef2f2;
+        cursor: help;
+    }
+
+    .highlight-spelling {
+        border-bottom: 2px solid #dc2626; /* red-600 */
+        background-color: #fef2f2;
+        cursor: help;
+    }
+
+    .highlight-tone {
+        border-bottom: 2px solid #f59e0b; /* amber-500 */
+        background-color: #fffbeb;
+        cursor: help;
+    }
+
+    .highlight-style {
+        border-bottom: 2px solid #a855f7; /* purple-500 */
+        background-color: #faf5ff;
+        cursor: help;
+    }
+
+    .highlight-formatting {
+        border-bottom: 2px solid #3b82f6; /* blue-500 */
+        background-color: #eff6ff;
+        cursor: help;
+    }
+</style>
+
+</head> 
+ 
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col"> 
+ 
+    <input type="file" id="transcriptUpload" accept=".docx,.doc" style="display:none"> 
+ 
+    <!-- Header --> 
+    <header class="flex items-center justify-between border-b border-border-light dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-8 py-4 sticky top-0 z-40 shrink-0"> 
+        <div class="flex items-center gap-3 shrink-0"> 
+            <div class="size-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20"> 
+                <span class="material-symbols-outlined text-white text-2xl">sync_alt</span> 
+            </div> 
+            <h1 class="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">Transcript Quality Check</h1> 
+        </div> 
+        <div class="flex items-center gap-4"> 
+            <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-border-light dark:border-slate-700"> 
+                <button id="uploadTranscriptBtn" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-transparent hover:border-primary transition-all"> 
+                    <span class="material-symbols-outlined text-primary text-xl">upload_file</span> 
+                    <div class="text-left leading-tight"> 
+                        <p class="text-[10px] uppercase font-bold text-slate-500">Step 1</p> 
+                        <p class="text-xs font-semibold">Upload Transcript (Word)</p> 
+                    </div> 
+                </button> 
+            </div> 
+        </div> 
+    </header> 
+ 
+    <!-- Stats Bar --> 
+    <div id="statsBar" class="bg-white dark:bg-slate-900 border-b border-border-light dark:border-slate-800 px-8 py-3" style="display:none"> 
+        <div class="flex items-center justify-between"> 
+            <div class="flex items-center gap-6 text-sm"> 
+                <div class="flex items-center gap-2"> 
+                    <span class="text-slate-500">Total Words:</span> 
+                    <span class="font-bold" id="totalWords">0</span> 
+                </div> 
+                <div class="flex items-center gap-2"> 
+                    <span class="text-slate-500">Total Characters:</span> 
+                    <span class="font-bold" id="totalChars">0</span> 
+                </div> 
+                <div class="flex items-center gap-2"> 
+                    <span class="text-slate-500">Estimated Minutes:</span> 
+                    <span class="font-bold text-primary" id="totalMinutes">0</span> 
+                    <span class="text-xs text-red-600 font-bold ml-2" id="minutesWarning" style="display:none">⚠️ EXCEEDS 25 MINUTES!</span> 
+                </div> 
+            </div> 
+            <div class="flex items-center gap-4"> 
+                <span class="text-sm text-slate-500">Total Issues:</span> 
+                <span class="text-lg font-bold text-red-600" id="totalIssues">0</span> 
+            </div> 
+        </div> 
+    </div> 
+ 
+    <!-- Column Headers sticky below header --> 
+    <div class="bg-white dark:bg-slate-900 border-b border-border-light dark:border-slate-800 px-8 py-2 sticky top-[73px] z-30"> 
+        <div class="grid grid-cols-[1fr_320px] gap-6 w-full"> 
+            <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Transcript Section</span> 
+            <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">QA Compliance Feed</span> 
+        </div> 
+    </div> 
+ 
+    <!-- Main --> 
+    <main class="flex-1"> 
+        <div id="emptyState" class="p-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-800 m-8 rounded-2xl"> 
+            <span class="material-symbols-outlined text-6xl text-slate-300 mb-4">upload_file</span> 
+            <p class="text-slate-500 font-medium text-lg mb-2">Upload transcript to begin</p> 
+            <p class="text-slate-400 text-sm">Upload Word transcript to start quality check</p> 
+        </div> 
+        <div id="slidesContainer" class="py-8"></div> 
+    </main> 
+ 
+    <!-- Footer --> 
+    <footer class="bg-white dark:bg-slate-900 border-t border-border-light dark:border-slate-800 px-8 py-3 flex items-center justify-between text-[11px] font-medium text-slate-500 shrink-0"> 
+        <div class="flex items-center gap-6"> 
+            <div class="flex items-center gap-2 px-2 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full border border-green-100 dark:border-green-900/30"> 
+                <span class="size-1.5 rounded-full bg-green-500 animate-pulse"></span> 
+                System Ready 
+            </div> 
+            <div id="fileName" class="flex items-center gap-2"> 
+                <span class="material-symbols-outlined text-sm">description</span> 
+                No file loaded 
+            </div> 
+        </div> 
+        <div class="flex items-center gap-4 uppercase tracking-widest"> 
+            <span id="slidesAnalyzed">0 Sections Analysed</span> 
+            <span class="text-slate-300 dark:text-slate-700">|</span> 
+            <span class="text-red-500" id="errorsRemaining">0 Errors Remaining</span> 
+        </div> 
+    </footer> 
+ 
+<script> 
+const state = { 
+    originalText: '', 
+    fileName: '', 
+    slides: [], 
+    title: '', 
+    errors: [] 
+}; 
+
+const usToUk = { 
+    'analyze':'analyse','analyzes':'analyses','analyzed':'analysed','analyzing':'analysing','analyzer':'analyser', 
+    'organize':'organise','organizes':'organises','organized':'organised','organizing':'organising','organization':'organisation','organizations':'organisations', 
+    'realize':'realise','realizes':'realises','realized':'realised','realizing':'realising','realization':'realisation', 
+    'recognize':'recognise','recognizes':'recognises','recognized':'recognised','recognizing':'recognising', 
+    'summarize':'summarise','summarizes':'summarises','summarized':'summarised','summarizing':'summarising', 
+    'criticize':'criticise','criticizes':'criticises','criticized':'criticised','criticizing':'criticising', 
+    'optimize':'optimise','optimizes':'optimises','optimized':'optimised','optimizing':'optimising','optimization':'optimisation', 
+    'apologize':'apologise','apologizes':'apologises','apologized':'apologised','apologizing':'apologising', 
+    'authorize':'authorise','authorizes':'authorises','authorized':'authorised','authorizing':'authorising','authorization':'authorisation', 
+    'behavior':'behaviour','behaviors':'behaviours','behavioral':'behavioural', 
+    'color':'colour','colors':'colours','colored':'coloured','coloring':'colouring','colorful':'colourful', 
+    'favor':'favour','favors':'favours','favorite':'favourite','favorites':'favourites', 
+    'honor':'honour','honors':'honours','honored':'honoured','honorable':'honourable', 
+    'labor':'labour','labors':'labours','laborer':'labourer', 
+    'neighbor':'neighbour','neighbors':'neighbours','neighborhood':'neighbourhood', 
+    'flavor':'flavour','flavors':'flavours','humor':'humour','rumor':'rumour','rumors':'rumours', 
+    'vapor':'vapour','vigor':'vigour','valor':'valour','endeavor':'endeavour', 
+    'odor':'odour','tumor':'tumour','tumors':'tumours', 
+    'center':'centre','centers':'centres','centered':'centred', 
+    'fiber':'fibre','fibers':'fibres','liter':'litre','liters':'litres', 
+    'meter':'metre','meters':'metres','kilometer':'kilometre','kilometers':'kilometres', 
+    'theater':'theatre','theaters':'theatres', 
+    'defense':'defence','offense':'offence','license':'licence', 
+    'analog':'analogue','catalog':'catalogue','dialog':'dialogue','monolog':'monologue', 
+    'canceled':'cancelled','canceling':'cancelling', 
+    'traveled':'travelled','traveler':'traveller','traveling':'travelling', 
+    'labeled':'labelled','labeling':'labelling','modeled':'modelled','modeling':'modelling', 
+    'program':'programme','programs':'programmes', 
+    'jewelry':'jewellery','gray':'grey','aging':'ageing', 
+    'maneuver':'manoeuvre','maneuvers':'manoeuvres', 
+    'skeptic':'sceptic','skeptical':'sceptical','skepticism':'scepticism', 
+    'tire':'tyre','tires':'tyres','mom':'mum','math':'maths', 
+    'aluminum':'aluminium','mold':'mould','molds':'moulds', 
+    'anemia':'anaemia','anesthetic':'anaesthetic','diarrhea':'diarrhoea', 
+    'pediatric':'paediatric','pediatrics':'paediatrics', 
+    'learned':'learnt','burned':'burnt','dreamed':'dreamt', 
+    'spelled':'spelt','spilled':'spilt','spoiled':'spoilt', 
+    'leaned':'leant','leaped':'leapt','kneeled':'knelt','dwelled':'dwelt' 
+}; 
+ 
+const grammarRules = [ 
+    { pattern:/\bcould\s+of\b/gi, message:"Please use 'could have' instead of 'could of'" }, 
+    { pattern:/\bshould\s+of\b/gi, message:"Please use 'should have' instead of 'should of'" }, 
+    { pattern:/\bwould\s+of\b/gi, message:"Please use 'would have' instead of 'would of'" }, 
+    { pattern:/\bbetween\s+you\s+and\s+I\b/gi, message:"Please use 'between you and me'" }, 
+    { pattern:/\bthere\s+is\s+\w+\s+and\b/gi, message:"Please use 'there are' for plural subjects" } 
+]; 
+ 
+const idioms = [ 
+    'a piece of cake','break a leg','hit the nail on the head','let the cat out of the bag', 
+    'once in a blue moon','the ball is in your court','bite off more than you can chew', 
+    'break the ice','cut corners','get out of hand','go the extra mile', 
+    'hang in there','on the same page','pull yourself together','under the weather', 
+    'come up with','figure out','look into','put up with','run into','get across', 
+    'give up','carry on','bring up','call off','turn down','look after' 
+]; 
+ 
+document.addEventListener('DOMContentLoaded', () => { 
+    document.getElementById('uploadTranscriptBtn').addEventListener('click', () => document.getElementById('transcriptUpload').click()); 
+    document.getElementById('transcriptUpload').addEventListener('change', handleTranscriptUpload); 
+}); 
+ 
+async function handleTranscriptUpload(e) { 
+    const file = e.target.files[0]; 
+    if (!file) return; 
+    state.fileName = file.name; 
+    document.getElementById('fileName').innerHTML = `<span class="material-symbols-outlined text-sm">description</span> ${file.name}`; 
+    const reader = new FileReader(); 
+    reader.onload = async function(event) { 
+        try { 
+            const result = await mammoth.extractRawText({arrayBuffer: event.target.result}); 
+            state.originalText = result.value; 
+            parseTranscript(); 
+            analyzeTranscript(); 
+            renderUI(); 
+        } catch(err) { alert('Error reading document: ' + err.message); } 
+    }; 
+    reader.readAsArrayBuffer(file); 
+} 
+ 
+function parseTranscript() { 
+    const text = state.originalText; 
+    const lines = text.split('\n').filter(l => l.trim()); 
+    state.title = lines[0] || 'Untitled Lecture'; 
+    const slidePattern = /(?:^|\n)(?:Slide\s+(\d+)|(\d+)\.)\s*[:\-]?\s*([^\n]*)/gi; 
+    const matches = [...text.matchAll(slidePattern)]; 
+    state.slides = []; 
+    if (!matches.length) { 
+        state.slides.push({number:1, title:'Main Content', content:text.replace(state.title,'').trim(), startPos:0, endPos:text.length}); 
+    } else { 
+        matches.forEach((match, idx) => { 
+            const slideNum = match[1] || match[2]; 
+            const slideTitle = match[3] || `Section ${slideNum}`; 
+            const startPos = match.index; 
+            const endPos = idx < matches.length-1 ? matches[idx+1].index : text.length; 
+            const content = text.substring(startPos, endPos).replace(match[0],'').trim(); 
+            state.slides.push({number: parseInt(slideNum), title: slideTitle, content, startPos, endPos}); 
+        }); 
+    } 
+} 
+ 
+function analyzeTranscript() { 
+    state.errors = []; 
+    const totalWords = countWords(state.originalText); 
+    const totalMinutes = Math.round(totalWords/100); 
+    if (totalWords < 1800) { 
+        state.errors.push({type:'tone', slideNum:0, message:`Transcript has ${totalWords} words (~${totalMinutes} min), below the recommended ~2000 words.`, severity:'warning', position:0}); 
+    } else if (totalMinutes > 25) { 
+        state.errors.push({type:'tone', slideNum:0, message:`Transcript has ${totalWords} words (~${totalMinutes} min). EXCEEDS the 25-minute maximum!`, severity:'error', position:0}); 
+    } else if (totalWords > 2200) { 
+        state.errors.push({type:'tone', slideNum:0, message:`Transcript has ${totalWords} words (~${totalMinutes} min), above recommended ~2000 words.`, severity:'warning', position:0}); 
+    } 
+    checkTitle(); 
+    state.slides.forEach(slide => checkSlideContent(slide)); 
+} 
+ 
+function checkTitle() { 
+    if (state.title.length > 50) 
+        state.errors.push({type:'formatting', slideNum:0, message:`Title is ${state.title.length} chars — keep under 50.`, severity:'warning', position:0}); 
+    if (state.title !== toTitleCase(state.title)) 
+        state.errors.push({type:'formatting', slideNum:0, message:'Lecture title should be in title case.', severity:'info', position:0}); 
+} 
+ 
+function checkSlideContent(slide) { 
+    const {content, number: slideNum, startPos, endPos} = slide; 
+    Object.entries(usToUk).forEach(([us, uk]) => { 
+        const regex = new RegExp(`\\b${us}\\b`, 'gi'); 
+        let match; 
+        while ((match = regex.exec(content)) !== null) { 
+            state.errors.push({type:'spelling', slideNum, message:`Spelling: "${match[0]}" → "${uk}"`, severity:'error', position: startPos+match.index, length: match[0].length, text: match[0], replacement: uk}); 
+        } 
+    }); 
+    grammarRules.forEach(rule => { 
+        let match; 
+        const rp = new RegExp(rule.pattern.source, rule.pattern.flags); 
+        while ((match = rp.exec(content)) !== null) { 
+            state.errors.push({type:'grammar', slideNum, message: rule.message, severity:'error', position: startPos+match.index, length: match[0].length, text: match[0]}); 
+        } 
+    }); 
+    content.split(/[.!?]+/).filter(s=>s.trim()).forEach(sentence => { 
+        const words = sentence.trim().split(/\s+/).filter(w=>w.length>0); 
+        if (words.length > 40) { 
+            const sp = content.indexOf(sentence.trim()); 
+            state.errors.push({type:'tone', slideNum, message:`Sentence has ${words.length} words — consider breaking it up.`, severity:'warning', position: startPos+sp, length: sentence.trim().length, text: sentence.trim().substring(0,100)+'...'}); 
+        } 
+    }); 
+    idioms.forEach(idiom => { 
+        const regex = new RegExp(`\\b${idiom}\\b`, 'gi'); 
+        let match; 
+        while ((match = regex.exec(content)) !== null) { 
+            state.errors.push({type:'style', slideNum, message:`Idiom: "${match[0]}" — use clearer, more direct language.`, severity:'info', position: startPos+match.index, length: match[0].length, text: match[0]}); 
+        } 
+    }); 
+} 
+ 
+function renderUI() { 
+    if (!state.slides.length) return; 
+    document.getElementById('emptyState').style.display = 'none'; 
+    document.getElementById('statsBar').style.display = 'block'; 
+ 
+    const totalWords = countWords(state.originalText); 
+    const totalMinutes = Math.round(totalWords/100); 
+    const totalIssues = state.errors.length; 
+ 
+    document.getElementById('totalWords').textContent = totalWords.toLocaleString(); 
+    document.getElementById('totalChars').textContent = state.originalText.length.toLocaleString(); 
+    document.getElementById('totalMinutes').textContent = totalMinutes; 
+    document.getElementById('totalIssues').textContent = totalIssues; 
+ 
+    const mEl = document.getElementById('totalMinutes'); 
+    const mWarn = document.getElementById('minutesWarning'); 
+    if (totalMinutes > 25) { 
+        mEl.className = 'font-bold text-red-600'; 
+        mWarn.style.display = 'inline'; 
+    } else { 
+        mEl.className = 'font-bold text-primary'; 
+        mWarn.style.display = 'none'; 
+    } 
+ 
+    document.getElementById('slidesAnalyzed').textContent = `${state.slides.length} Sections Analysed`; 
+    document.getElementById('errorsRemaining').textContent = `${totalIssues} ${totalIssues===1?'Error':'Errors'} Remaining`; 
+ 
+    document.getElementById('slidesContainer').innerHTML = state.slides.map((slide, idx) => renderSlide(slide, idx)).join(''); 
+} 
+ 
+function renderSlide(slide, index) { 
+    const slideErrors = state.errors 
+        .filter(e => e.slideNum === slide.number) 
+        .sort((a,b) => (a.position??Infinity) - (b.position??Infinity)); 
+ 
+    const words = countWords(slide.content); 
+    const chars = slide.content.length; 
+    const minutes = Math.round(words/100); 
+ 
+    let highlighted = escapeHtml(slide.content); 
+    [...slideErrors] 
+        .filter(e => e.position !== undefined) 
+        .sort((a,b) => b.position - a.position) 
+        .forEach(error => { 
+            if (error.length && error.position >= slide.startPos && error.position < slide.endPos) { 
+                const rel = error.position - slide.startPos; 
+                const before = highlighted.substring(0, rel); 
+                const word   = highlighted.substring(rel, rel + error.length); 
+                const after  = highlighted.substring(rel + error.length); 
+                highlighted = before + `<span class="highlight-${error.type}" title="${escapeHtml(error.message)}">${word}</span>` + after; 
+            } 
+        }); 
+    highlighted = highlighted.replace(/\n/g, '<br>'); 
+ 
+    return ` 
+        <div class="lecture-block"> 
+            <div class="flex flex-col gap-2"> 
+                <div class="flex items-center justify-between mb-2"> 
+                    <div class="text-xs text-slate-400 font-mono">Section ${slide.number}</div> 
+                    <div class="flex gap-2 text-xs text-slate-500"> 
+                        <span>${words} words</span><span>•</span> 
+                        <span>${chars} chars</span><span>•</span> 
+                        <span>${minutes} min</span> 
+                    </div> 
+                </div> 
+                <div class="content-area text-base leading-relaxed dark:text-slate-300">${highlighted}</div> 
+            </div> 
+ 
+            <div class="space-y-3"> 
+                ${slideErrors.length === 0 
+                    ? `<div class="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/40 p-3 rounded-lg"> 
+                           <div class="flex items-center gap-2 mb-1 text-green-600 dark:text-green-400"> 
+                               <span class="material-symbols-outlined text-sm">verified</span> 
+                               <span class="text-[10px] font-bold uppercase">Compliance Passed</span> 
+                           </div> 
+                           <p class="text-xs font-medium">No errors found in this section.</p> 
+                       </div>` 
+                    : slideErrors.map(renderErrorCard).join('') 
+                } 
+            </div> 
+        </div>`; 
+} 
+ 
+function renderErrorCard(error) { 
+    const colors = { 
+        grammar:    {bg:'bg-red-50/50 dark:bg-red-950/20',    border:'border-red-200/50 dark:border-red-900/30',    text:'text-red-600 dark:text-red-400',    icon:'spellcheck'}, 
+        spelling:   {bg:'bg-rose-50/50 dark:bg-rose-950/20',   border:'border-rose-200/50 dark:border-rose-900/30',   text:'text-rose-600 dark:text-rose-400',   icon:'spellcheck'}, 
+        tone:       {bg:'bg-amber-50/50 dark:bg-amber-950/20', border:'border-amber-200/50 dark:border-amber-900/30', text:'text-amber-600 dark:text-amber-400', icon:'psychology'}, 
+        style:      {bg:'bg-indigo-50/50 dark:bg-indigo-950/20', border:'border-indigo-200/50 dark:border-indigo-900/30', text:'text-indigo-600 dark:text-indigo-400', icon:'style'}, 
+        formatting: {bg:'bg-sky-50/50 dark:bg-sky-950/20',  border:'border-sky-200/50 dark:border-sky-900/30',  text:'text-sky-600 dark:text-sky-400',  icon:'format_shapes'} 
+    }; 
+    const c = colors[error.type] || colors.formatting; 
+    const displayText = error.text ? (error.text.length > 60 ? error.text.substring(0,60)+'...' : error.text) : ''; 
+    return ` 
+        <div class="${c.bg} border ${c.border} p-4 rounded-xl backdrop-blur-sm shadow-sm"> 
+            <div class="flex items-center gap-2 mb-1 ${c.text}"> 
+                <span class="material-symbols-outlined text-sm">${c.icon}</span> 
+                <span class="text-[10px] font-bold uppercase">${error.type} Issue</span> 
+            </div> 
+            <p class="text-xs font-medium mb-2">${escapeHtml(error.message)}</p> 
+            ${displayText ? `<div class="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-white/50 dark:bg-slate-800/50 p-2 rounded">"${escapeHtml(displayText)}"</div>` : ''} 
+        </div>`; 
+} 
+ 
+function countWords(text) { 
+    return text.trim().split(/\s+/).filter(w=>w.length>0).length; 
+} 
+function toTitleCase(str) { 
+    const minor = ['a','an','and','as','at','but','by','for','in','of','on','or','the','to','with']; 
+    return str.split(' ').map((w,i) => (!i || !minor.includes(w.toLowerCase())) ? w.charAt(0).toUpperCase()+w.slice(1).toLowerCase() : w.toLowerCase()).join(' '); 
+} 
+function escapeHtml(text) { 
+    const d = document.createElement('div'); 
+    d.textContent = text; 
+    return d.innerHTML; 
+} 
+</script> 
+</body> 
+</html>
