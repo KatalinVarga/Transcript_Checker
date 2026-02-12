@@ -372,7 +372,7 @@ function renderUI() {
  
     const totalWords = countWords(state.originalText); 
     const totalMinutes = Math.round(totalWords/100); 
-    const totalIssues = state.errors.length; 
+    const totalIssues = state.errors.length-2; 
  
     document.getElementById('totalWords').textContent = totalWords.toLocaleString(); 
     document.getElementById('totalChars').textContent = state.originalText.length.toLocaleString(); 
